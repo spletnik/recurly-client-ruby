@@ -19,6 +19,7 @@ module Recurly
   autoload :SubscriptionAddOn, 'recurly/subscription_add_on'
   autoload :Transaction,       'recurly/transaction'
   autoload :Version,           'recurly/version'
+  autoload :RateLimit,         'recurly/rate_limit'
   autoload :XML,               'recurly/xml'
 
   @subdomain = nil
