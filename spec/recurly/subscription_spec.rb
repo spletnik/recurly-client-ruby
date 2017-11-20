@@ -8,6 +8,7 @@ describe Subscription do
         currency: 'EUR',
         terms_and_conditions: 'Some Terms and Conditions',
         customer_notes: 'Some Customer Notes',
+        imported_trial: true,
         account: {
           account_code: '1',
           email: 'verena@example.com',
@@ -333,9 +334,9 @@ describe Subscription do
 
         subscription = Subscription.find 'abcdef1234567890'
 
-        stub_request(:put, "https://api_key:@api.recurly.com/v2/subscriptions/abcdef1234567890").
+        stub_request(:put, "https://api.recurly.com/v2/subscriptions/abcdef1234567890").
           with(:body => "<subscription><plan_code>abc</plan_code><quantity>1</quantity><unit_amount_in_cents>1500</unit_amount_in_cents></subscription>",
-               :headers => {'Accept'=>'application/xml'}).
+               :headers => Recurly::API.headers).
           to_return(:status => 200, :body => "", :headers => {})
 
         subscription.update_attributes({ plan_code: 'abc', quantity: 1, unit_amount_in_cents: 1500 })
@@ -350,9 +351,9 @@ describe Subscription do
 
         subscription = Subscription.find 'abcdef1234567890'
 
-        stub_request(:put, "https://api_key:@api.recurly.com/v2/subscriptions/abcdef1234567890").
+        stub_request(:put, "https://api.recurly.com/v2/subscriptions/abcdef1234567890").
           with(:body => "<subscription><plan_code>plan_code</plan_code><unit_amount_in_cents>1500</unit_amount_in_cents></subscription>",
-               :headers => {'Accept'=>'application/xml'}).
+               :headers => Recurly::API.headers).
           to_return(:status => 200, :body => "", :headers => {})
 
         subscription.update_attributes({ plan_code: 'plan_code', quantity: 1, unit_amount_in_cents: 1500 })

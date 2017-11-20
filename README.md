@@ -5,6 +5,8 @@
 [Recurly](https://recurly.com/)'s Ruby client library is an interface to its
 [REST API](https://dev.recurly.com/docs/getting-started).
 
+You can also look at [rubydocs](http://www.rubydoc.info/github/recurly/recurly-client-ruby/master)
+to see documentation on the classes and methods available.
 
 ## Installation
 
@@ -12,12 +14,11 @@ Recurly is packaged as a Ruby gem. We recommend you install it with
 [Bundler](http://gembundler.com/) by adding the following line to your Gemfile:
 
 ``` ruby
-gem 'recurly', '~> 2.7.5'
+gem 'recurly', '~> 2.11.3'
 ```
 
 Recurly will automatically use [Nokogiri](http://nokogiri.org/) (for a nice
 speed boost) if it's available and loaded in your app's environment.
-
 
 ## Configuration
 
@@ -62,14 +63,19 @@ recurly.configure({ publicKey: '<%= Recurly.js.public_key %>'});
 ```
 
 The client library currently uses a Net::HTTP adapter. If you need to
-configure the settings passed to Net::HTTP (e.g., an SSL certificates path),
-make sure you assign them before you make any requests:
+configure the settings passed to Net::HTTP (e.g., an SSL certificates path or timeout lengths),
+make sure you assign them when initializing the library:
 
 ``` ruby
 Recurly::API.net_http = {
-  :ca_path => "/etc/ssl/certs"
+  ca_path: "/etc/ssl/certs",
+  open_timeout: 5, # 5 seconds (defaults to 60)
+  read_timeout: 45 # 45 seconds (defaults to 60)
 }
 ```
+
+To see which keys are supported for this Hash, see the `Attributes` section
+of the [Net::HTTP documentation](http://ruby-doc.org/stdlib-2.4.1/libdoc/net/http/rdoc/Net/HTTP.html) for your ruby version.
 
 ## Multi-Threaded Configuration
 If you are using the client in a multi-threaded environment and require a different configuration per
@@ -88,6 +94,19 @@ Any configuration items you do not include in the above config call will be defa
 configuration items. For example if you do not define default_currency then Recurly.default_currency
 will be used.
 
+## Supported Versions
+
+We are currently supporting versions `2.1.0` and above. `1.9` and `2.0` will still work but are deprecated.
+
+If you are still using one of these rubies, you should know that support for them ended in
+2015 (1.9) and 2016 (2.0) and continuing to use them is a security risk.
+
+- https://www.ruby-lang.org/en/news/2015/02/23/support-for-ruby-1-9-3-has-ended/
+- https://www.ruby-lang.org/en/news/2016/02/24/support-plan-of-ruby-2-0-0-and-2-1/
+
+For now, we are still running the tests on 1.9 and 2.0 but without `nokogiri` and only `rexml`. Nokogiri is
+no longer supported on 1.9 or 2.0 and has patched known vulnerabilities since dropping support.
+If you must run one of these rubies (this includes jruby1.7), you must use rexml and not nokogiri.
 
 ## Usage
 
@@ -101,11 +120,6 @@ Recurly's gem API is available
 
 - [https://support.recurly.com](https://support.recurly.com)
 - [stackoverflow](http://stackoverflow.com/questions/tagged/recurly)
-
-## Announcements
-
-- [@recurly](https://twitter.com/recurly)
-- [Google Group Announcements](https://groups.google.com/group/recurly-api)
 
 ## Contributing
 
@@ -147,7 +161,7 @@ If everything looks good, submit a pull request on GitHub and we'll bring in you
 
 (The MIT License.)
 
-© 2009–2016 Recurly Inc.
+© 2009–2017 Recurly Inc.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

@@ -5,13 +5,12 @@ module Recurly
     # @macro [attach] scope
     #   @scope class
     #   @return [Pager] a pager that yields +$1+ transactions.
-    scope :authorizations, :type  => 'authorization'
-    scope :purchases,      :type  => 'purchase'
-    scope :refunds,        :type  => 'refund'
-
-    scope :successful,     :state => 'successful'
-    scope :failed,         :state => 'failed'
-    scope :voided,         :state => 'voided'
+    scope :authorizations, type: 'authorization'
+    scope :purchases,      type: 'purchase'
+    scope :refunds,        type: 'refund'
+    scope :successful,     state: 'successful'
+    scope :failed,         state: 'failed'
+    scope :voided,         state: 'voided'
 
     # @return [Account]
     belongs_to :account
@@ -20,8 +19,11 @@ module Recurly
     # @return [Subscription, nil]
     belongs_to :subscription
 
+    # @return [Pager<Subscription>, nil]
+    has_many :subscriptions
+
     # @return [Transaction, nil]
-    has_one :original_transaction, class_name: 'Transaction', readonly: true
+    has_one :original_transaction, class_name: :Transaction, readonly: true
 
     define_attribute_methods %w(
       id
@@ -52,6 +54,11 @@ module Recurly
       tax_code
       accounting_code
       fraud
+      product_code
+      gateway_type
+      origin
+      message
+      approval_code
     )
     alias to_param uuid
     alias fraud_info fraud
@@ -65,7 +72,7 @@ module Recurly
     attr_reader :type
 
     # @see Resource#initialize
-    def initialize attributes = {}
+    def initialize(attributes = {})
       super({ :currency => Recurly.default_currency }.merge attributes)
     end
 

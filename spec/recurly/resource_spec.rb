@@ -97,6 +97,10 @@ XML
         stub_api_request(:get, 'resources/khan') { XML[404] }
         proc { resource.find :khan }.must_raise Resource::NotFound
       end
+
+      it "must reject empty strings" do
+        proc { resource.find '' }.must_raise Resource::NotFound
+      end
     end
 
     describe ".find_each" do
@@ -352,6 +356,30 @@ Content-Type: application/xml; charset=utf-8
 XML
         record.reload
         record[:name].must_equal 'The Matrix'
+      end
+
+      it "must reload attributes for persistent records when they have an href" do
+        stub_api_request(:get, 'resources/neo') { <<XML }
+HTTP/1.1 200 OK
+Content-Type: application/xml; charset=utf-8
+
+<resource href="https://api.recurly.com/v2/resources/neo">
+  <uuid>neo</uuid>
+  <name>The Matrix</name>
+</resource>
+XML
+        record = resource.find('neo')
+        stub_api_request(:get, 'resources/neo') { <<XML }
+HTTP/1.1 200 OK
+Content-Type: application/xml; charset=utf-8
+
+<resource href="https://api.recurly.com/v2/resources/neo">
+  <uuid>neo</uuid>
+  <name>The Matrix Reloaded</name>
+</resource>
+XML
+        record.reload
+        record.name.must_equal 'The Matrix Reloaded'
       end
     end
 

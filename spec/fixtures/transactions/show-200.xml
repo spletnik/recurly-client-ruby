@@ -5,6 +5,8 @@ Content-Type: application/xml; charset=utf-8
 <transaction href="https://api.recurly.com/v2/transactions/abcdef1234567890">
   <account href="https://api.recurly.com/v2/accounts/account"/>
   <original_transaction href="https://api.recurly.com/v2/transactions/0987654321fedcba"/>
+  <subscription href="https://api.recurly.com/v2/subscriptions/0987654321fedcba"/>
+  <subscriptions href="https://api.recurly.com/v2/transactions/abcdef1234567890/subscriptions"/>
   <uuid>abcdef1234567890</uuid>
   <action>purchase</action>
   <amount_in_cents type="integer">30000</amount_in_cents>
@@ -54,4 +56,8 @@ Content-Type: application/xml; charset=utf-8
     <score type="integer">88</score>
     <decision>DECLINE</decision>
   </fraud>
+  <gateway_type>test</gateway_type>
+  <origin>api</origin>
+  <message>Successful test transaction</message>
+  <approval_code>P1234577Q</approval_code>
 </transaction>

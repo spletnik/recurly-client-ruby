@@ -163,7 +163,6 @@ module Recurly
       end
     end
 
-
     class << self
       # @return [String] The demodulized name of the resource class.
       # @example
@@ -332,14 +331,12 @@ module Recurly
       #     for subscriptions use uuid
       #     for transactions use uuid
       def find(uuid, options = {})
-        if uuid.nil?
-          # Should we raise an ArgumentError, instead?
+        if uuid.nil? || uuid.to_s.empty?
           raise NotFound, "can't find a record with nil identifier"
         end
 
-        uri = uuid =~ /^http/ ? uuid : member_path(uuid)
         begin
-          from_response API.get(uri, {}, options)
+          from_response API.get(member_path(uuid), {}, options)
         rescue API::NotFound => e
           raise NotFound, e.description
         end
@@ -394,11 +391,10 @@ module Recurly
       # @see from_response
       def from_xml(xml)
         xml = XML.new xml
+
         if self != Resource || xml.name == member_name
           record = new
-        elsif Recurly.const_defined?(
-          class_name = Helper.classify(xml.name), false
-        )
+        elsif Recurly.const_defined?(class_name = Helper.classify(xml.name), false)
           klass = Recurly.const_get class_name, false
           record = klass.send :new
         elsif root = xml.root and root.elements.empty?
@@ -413,6 +409,9 @@ module Recurly
         end
 
         xml.each_element do |el|
+          # skip this element if it's an xml comment
+          next if defined?(Nokogiri::XML::Node::TEXT_NODE) && el.is_a?(Nokogiri::XML::Comment)
+
           if el.name == 'a'
             record.links[el.attribute('name').value] = {
               :method => el.attribute('method').to_s,
@@ -448,13 +447,24 @@ module Recurly
               }
             end
           else
-            val = XML.cast(el)
-            if 'address' == el.name && val.kind_of?(Hash)
-              address = Address.new val
-              address.instance_variable_set(:@changed_attributes, {})
-              record[el.name] = address
+            # TODO name tax_type conflicts with the TaxType
+            # class so if we get to this point was can assume
+            # it's the string. Will need to refactor this
+            if el.name == 'tax_type'
+              record[el.name] = el.text
             else
-              record[el.name] = val
+              val = XML.cast(el)
+
+              # TODO we have to clear changed attributes after
+              # parsing here or else it always serializes. Need
+              # a better way of handling changed attributes
+              if el.name == 'address' && val.kind_of?(Hash)
+                address = Address.new(val)
+                address.instance_variable_set(:@changed_attributes, {})
+                record[el.name] = address
+              else
+                record[el.name] = val
+              end
             end
           end
         end
@@ -498,7 +508,7 @@ module Recurly
       # @param collection_name [Symbol] Association name.
       # @param options [Hash] A hash of association options.
       # @option options [true, false] :readonly Don't define a setter.
-      #                 [String] :resource_class Actual associated resource class name
+      #                 [String] :class_name Actual associated resource class name
       #                                      if not same as collection_name.
       def has_many(collection_name, options = {})
         associations << Association.new(:has_many, collection_name.to_s, options)
@@ -524,7 +534,7 @@ module Recurly
       # @param member_name [Symbol] Association name.
       # @param options [Hash] A hash of association options.
       # @option options [true, false] :readonly Don't define a setter.
-      #                 [String] :resource_class Actual associated resource class name
+      #                 [String] :class_name Actual associated resource class name
       #                                      if not same as member_name.
       def has_one(member_name, options = {})
         associations << Association.new(:has_one, member_name.to_s, options)
@@ -562,7 +572,7 @@ module Recurly
       # @param parent_name [Symbol] Association name.
       # @param options [Hash] A hash of association options.
       # @option options [true, false] :readonly Don't define a setter.
-      #                 [String] :resource_class Actual associated resource class name
+      #                 [String] :class_name Actual associated resource class name
       #                                      if not same as parent_name.
       def belongs_to(parent_name, options = {})
         associations << Association.new(:belongs_to, parent_name.to_s, options)
@@ -623,9 +633,12 @@ module Recurly
         return if response.body.to_s.length.zero?
         fresh = self.class.from_response response
       else
-        fresh = self.class.find(
-          @href || to_param, :etag => (etag unless changed?)
-        )
+        options = {:etag => (etag unless changed?)}
+        fresh = if @href
+                  self.class.from_response API.get(@href, {}, options)
+                else
+                  self.class.find(to_param, options)
+                end
       end
       fresh and copy_from fresh
       persist! true
@@ -835,7 +848,7 @@ module Recurly
       if new_record? || changed?
         clear_errors
         @response = API.send(
-          persisted? ? :put : :post, path, to_xml(:delta => true)
+          persisted? ? :put : :post, path, to_xml
         )
         reload response
         persist! true
@@ -1012,6 +1025,15 @@ module Recurly
     end
     alias to_s inspect
 
+    def apply_errors(exception)
+      @response = exception.response
+      document = XML.new exception.response.body
+      document.each_element 'error' do |el|
+        attribute_path = el.attribute('field').value.split '.'
+        invalid! attribute_path[1, attribute_path.length], el.text
+      end
+    end
+
     protected
 
     def path
@@ -1050,23 +1072,17 @@ module Recurly
       end
     end
 
-    def apply_errors(exception)
-      @response = exception.response
-      document = XML.new exception.response.body
-      document.each_element 'error' do |el|
-        attribute_path = el.attribute('field').value.split '.'
-        invalid! attribute_path[1, attribute_path.length], el.text
-      end
-    end
-
     private
 
-    def fetch_associated(name, value)
+    def fetch_associated(name, value, options = {})
       case value
       when Array
-        value.map { |each| fetch_associated(Helper.singularize(name), each) }
+        value.map do |v|
+          fetch_associated(Helper.singularize(name), v, association_name: name)
+        end
       when Hash
-        associated_class_name = self.class.find_association(name).class_name
+        association_name = options[:association_name] || name
+        associated_class_name = self.class.find_association(association_name).class_name
         associated_class_name ||= Helper.classify(name)
         Recurly.const_get(associated_class_name, false).send(:new, value)
       when Proc, Resource, Resource::Pager, nil
