@@ -1,7 +1,7 @@
 module Recurly
   module Version
     MAJOR   = 2
-    MINOR   = 12
+    MINOR   = 14
     PATCH   = 3
 
     PRE     = nil

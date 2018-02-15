@@ -22,7 +22,7 @@ Gem::Specification.new do |s|
 
   s.required_ruby_version = '>= 1.9.3'
 
-  s.add_dependency('nokogiri','~> 1.6')
+  s.add_dependency('nokogiri')
 
   #if RUBY_VERSION >= "2.1.0"
   #  s.add_development_dependency('nokogiri','~> 1.7.1')
